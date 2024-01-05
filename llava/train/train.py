@@ -782,10 +782,18 @@ def train():
         ))
 
     if model_args.vision_tower is not None:
-        if 'mpt' in model_args.model_name_or_path:
+        if 'mpt' in model_args.model_name_or_path.lower():
             config = transformers.AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
             config.attn_config['attn_impl'] = training_args.mpt_attn_impl
             model = LlavaMPTForCausalLM.from_pretrained(
+                model_args.model_name_or_path,
+                config=config,
+                cache_dir=training_args.cache_dir,
+                **bnb_model_from_pretrained_args
+            )
+        elif 'qwen' in model_args.model_name_or_path.lower():
+            config = transformers.AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
+            model = LlavaQWenForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 config=config,
                 cache_dir=training_args.cache_dir,
@@ -846,6 +854,15 @@ def train():
             model_max_length=training_args.model_max_length,
             padding_side="right"
         )
+    elif 'qwen' in model_args.model_name_or_path.lower():
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            model_max_length=training_args.model_max_length,
+            padding_side="right",
+            trust_remote_code=True,
+            pad_token='<|endoftext|>'
+        )
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_args.model_name_or_path,
@@ -865,7 +882,8 @@ def train():
     elif model_args.version == "v0.5":
         tokenizer.pad_token = tokenizer.unk_token
     else:
-        tokenizer.pad_token = tokenizer.unk_token
+        if tokenizer.unk_token is not None:
+            tokenizer.pad_token = tokenizer.unk_token
         if model_args.version in conversation_lib.conv_templates:
             conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
         else:

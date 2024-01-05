@@ -168,6 +168,8 @@ def http_bot(state, model_selector, temperature, top_p, max_new_tokens, request:
         if "llava" in model_name.lower():
             if 'llama-2' in model_name.lower():
                 template_name = "llava_llama_2"
+            elif 'qwen' in model_name.lower():
+                template_name = "mpt"
             elif "v1" in model_name.lower():
                 if 'mmtag' in model_name.lower():
                     template_name = "v1_mmtag"
@@ -190,6 +192,7 @@ def http_bot(state, model_selector, temperature, top_p, max_new_tokens, request:
             template_name = "llama_2"
         else:
             template_name = "vicuna_v1"
+        logger.info(f'conv mode: {template_name}')
         new_state = conv_templates[template_name].copy()
         new_state.append_message(new_state.roles[0], state.messages[-2][1])
         new_state.append_message(new_state.roles[1], None)

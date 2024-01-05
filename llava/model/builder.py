@@ -89,6 +89,12 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
                 model = LlavaMPTForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
+            elif 'qwen' in model_name.lower():
+                if not os.path.isfile(os.path.join(model_path, 'configuration_qwen.py')):
+                    shutil.copyfile(os.path.join(model_base, 'configuration_qwen.py'), os.path.join(model_path, 'configuration_qwen.py'))
+                tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False, trust_remote_code=True)
+                cfg_pretrained = AutoConfig.from_pretrained(model_path, use_fast=False)
+                model = LlavaQWenForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
@@ -101,6 +107,9 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             if 'mpt' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = LlavaMPTForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+            elif 'qwen' in model_name.lower():
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True, trust_remote_code=True)
+                model = LlavaQWenForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
@@ -118,7 +127,6 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             print('Convert to FP16...')
             model.to(torch.float16)
         else:
-            use_fast = False
             if 'mpt' in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs)

@@ -10,6 +10,7 @@ class SeparatorStyle(Enum):
     MPT = auto()
     PLAIN = auto()
     LLAMA_2 = auto()
+    QWEN = auto()
 
 
 @dataclasses.dataclass
@@ -374,6 +375,7 @@ conv_templates = {
     "llava_llama_2": conv_llava_llama_2,
 
     "mpt": conv_mpt,
+    "qwen": conv_mpt,
 }
 
 
