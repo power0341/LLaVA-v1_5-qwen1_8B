@@ -145,7 +145,8 @@ class LLaVATrainer(Trainer):
                 group_by_modality=True,
             )
         else:
-            return super()._get_train_sampler()
+            sampler = super()._get_train_sampler()
+            return sampler
 
     def create_optimizer(self):
         """

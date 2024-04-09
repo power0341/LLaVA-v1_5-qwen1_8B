@@ -109,7 +109,7 @@ class Conversation:
     def append_message(self, role, message):
         self.messages.append([role, message])
 
-    def process_image(self, image, image_process_mode, return_pil=False, image_format='PNG', max_len=1344, min_len=672):
+    def process_image(self, image, image_process_mode, return_pil=False, image_format='PNG', target_size=336, max_len=1344, min_len=672):
         if image_process_mode == "Pad":
             def expand2square(pil_img, background_color=(122, 116, 104)):
                 width, height = pil_img.size
@@ -127,7 +127,7 @@ class Conversation:
         elif image_process_mode in ["Default", "Crop"]:
             pass
         elif image_process_mode == "Resize":
-            image = image.resize((336, 336))
+            image = image.resize((target_size, target_size))
         else:
             raise ValueError(f"Invalid image_process_mode: {image_process_mode}")
         if max(image.size) > max_len:

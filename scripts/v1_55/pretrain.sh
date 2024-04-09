@@ -1,24 +1,27 @@
-deepspeed --include=localhost:4,5,6,7 --master_port 23002 ./llava_uhd/train_mem.py \
+#!/bin/bash
+
+deepspeed --include=localhost:4,5,6,7 --master_port 23002 llava/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path /data1/xly/models/TinyLlama-1.1B-Chat-v1.0 \
     --version plain \
     --data_path /hotdata/xly/llava-data/LLaVA-Pretrain/blip_laion_cc_sbu_558k.json \
     --image_folder /hotdata/xly/llava-data/LLaVA-Pretrain/images \
-    --vision_tower /data1/xly/models/clip-vit-large-patch14-336 \
-    --mm_projector_type resample \
+    --vision_tower /data1/xly/models/siglip-base-patch16-384 \
+    --mm_projector_type mlp2x_gelu \
     --tune_mm_mlp_adapter True \
     --mm_vision_select_layer -2 \
+    --mm_vision_select_feature "cls_patch" \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --bf16 True \
-    --output_dir /data1/xly/models/llava_uhd/tinyllama-1.1b-pretrain \
+    --output_dir /data1/xly/models/llava-v1.55/llava-mlp2x-384px-tinyllama-1.1b-pretrain \
     --num_train_epochs 1 \
     --per_device_train_batch_size 32 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 2400 \
+    --save_steps 1000 \
     --save_total_limit 1 \
     --learning_rate 1e-3 \
     --weight_decay 0. \

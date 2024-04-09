@@ -14,6 +14,7 @@
 
 
 from abc import ABC, abstractmethod
+import ast
 
 import torch
 import torch.nn as nn
@@ -75,6 +76,9 @@ class LlavaMetaModel:
         self.config.mm_vision_select_layer = mm_vision_select_layer
         self.config.mm_vision_select_feature = mm_vision_select_feature
         self.config.mm_patch_merge_type = mm_patch_merge_type
+        image_grid_pinpoints = getattr(model_args, 'image_grid_pinpoints', None)
+        if image_grid_pinpoints is not None:
+            self.config.image_grid_pinpoints = ast.literal_eval(image_grid_pinpoints)
 
         if getattr(self, 'mm_projector', None) is None:
             self.mm_projector = build_vision_projector(self.config)
@@ -96,7 +100,14 @@ class LlavaMetaModel:
 
             self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
 
-
+    def initialize_image_newline(self):
+        self.image_newline = nn.Parameter(
+                    torch.empty(self.config.hidden_size, dtype=self.dtype)
+        )
+        embed_std = 1 / torch.sqrt(torch.tensor(self.config.hidden_size, dtype=self.dtype))
+        self.image_newline = nn.Parameter(
+            torch.randn(self.config.hidden_size, dtype=self.dtype) * embed_std
+        )
 def unpad_image(tensor, original_size):
     """
     Unpads a PyTorch tensor of a padded and resized image.

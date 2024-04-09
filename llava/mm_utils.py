@@ -5,7 +5,7 @@ import torch
 import math
 import ast
 
-from transformers import StoppingCriteria
+from transformers import StoppingCriteria, CLIPImageProcessor, SiglipImageProcessor
 from llava.constants import IMAGE_TOKEN_INDEX
 
 
@@ -134,11 +134,14 @@ def process_anyres_image(image, processor, grid_pinpoints):
         possible_resolutions = ast.literal_eval(grid_pinpoints)
     best_resolution = select_best_resolution(image.size, possible_resolutions)
     image_padded = resize_and_pad_image(image, best_resolution)
-
-    patches = divide_to_patches(image_padded, processor.crop_size['height'])
-
-    image_original_resize = image.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
-
+    if isinstance(processor, CLIPImageProcessor):
+        patches = divide_to_patches(image_padded, processor.crop_size['height'])
+        image_original_resize = image.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
+    elif isinstance(processor, SiglipImageProcessor):
+        patches = divide_to_patches(image_padded, processor.size['height'])
+        image_original_resize = image.resize((processor.size['height'], processor.size['height']))
+    else:
+        raise NotImplementedError
     image_patches = [image_original_resize] + patches
     image_patches = [processor.preprocess(image_patch, return_tensors='pt')['pixel_values'][0]
                      for image_patch in image_patches]
@@ -165,21 +168,34 @@ def expand2square(pil_img, background_color):
 
 def process_images(images, image_processor, model_cfg):
     image_aspect_ratio = getattr(model_cfg, "image_aspect_ratio", None)
-    new_images = []
-    if image_aspect_ratio == 'pad':
-        for image in images:
-            image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
-            image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
-            new_images.append(image)
-    elif image_aspect_ratio == "anyres":
-        for image in images:
-            image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
-            new_images.append(image)
+    if isinstance(images, list):
+        new_images = []
+        if image_aspect_ratio == 'pad':
+            for image in images:
+                image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+                image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                new_images.append(image)
+        elif image_aspect_ratio == "anyres":
+            for image in images:
+                image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
+                new_images.append(image)
+        else:
+            return image_processor(images, return_tensors='pt')['pixel_values']
+        if all(x.shape == new_images[0].shape for x in new_images):
+            new_images = torch.stack(new_images, dim=0)
+        return new_images
     else:
-        return image_processor(images, return_tensors='pt')['pixel_values']
-    if all(x.shape == new_images[0].shape for x in new_images):
-        new_images = torch.stack(new_images, dim=0)
-    return new_images
+        image = images
+        if image_aspect_ratio == 'pad':
+            image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+            return image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+            
+        elif image_aspect_ratio == "anyres":
+            return process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
+        else:
+            return image_processor(images, return_tensors='pt')['pixel_values']
+        
+        
 
 
 def tokenizer_image_token(prompt, tokenizer, image_token_index=IMAGE_TOKEN_INDEX, return_tensors=None):

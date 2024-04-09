@@ -33,7 +33,7 @@ from llava.train.llava_trainer import LLaVATrainer
 
 from llava import conversation as conversation_lib
 from llava.model import *
-from llava.mm_utils import tokenizer_image_token
+from llava.mm_utils import process_images, tokenizer_image_token
 
 from PIL import Image
 
@@ -64,7 +64,7 @@ class ModelArguments:
     mm_use_im_patch_token: bool = field(default=True)
     mm_patch_merge_type: Optional[str] = field(default='flat')
     mm_vision_select_feature: Optional[str] = field(default="patch")
-
+    image_grid_pinpoints: Optional[str] = field(default=None)
 
 @dataclass
 class DataArguments:
@@ -74,7 +74,6 @@ class DataArguments:
     is_multimodal: bool = False
     image_folder: Optional[str] = field(default=None)
     image_aspect_ratio: str = 'square'
-
 
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
@@ -110,6 +109,7 @@ class TrainingArguments(transformers.TrainingArguments):
     lora_bias: str = "none"
     mm_projector_lr: Optional[float] = None
     group_by_modality_length: bool = field(default=False)
+    dataloader_drop_last: bool = field(default=False)
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -660,7 +660,8 @@ class LazySupervisedDataset(Dataset):
 
     def __init__(self, data_path: str,
                  tokenizer: transformers.PreTrainedTokenizer,
-                 data_args: DataArguments):
+                 data_args: DataArguments
+                 ):
         super(LazySupervisedDataset, self).__init__()
         list_data_dict = json.load(open(data_path, "r"))
 
@@ -699,23 +700,8 @@ class LazySupervisedDataset(Dataset):
             image_folder = self.data_args.image_folder
             processor = self.data_args.image_processor
             image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
-            if self.data_args.image_aspect_ratio == 'pad':
-                def expand2square(pil_img, background_color):
-                    width, height = pil_img.size
-                    if width == height:
-                        return pil_img
-                    elif width > height:
-                        result = Image.new(pil_img.mode, (width, width), background_color)
-                        result.paste(pil_img, (0, (width - height) // 2))
-                        return result
-                    else:
-                        result = Image.new(pil_img.mode, (height, height), background_color)
-                        result.paste(pil_img, ((height - width) // 2, 0))
-                        return result
-                image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
-            else:
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+            image_size = image.size
+            image = process_images(image, processor, self.data_args)
             sources = preprocess_multimodal(
                 copy.deepcopy([e["conversations"] for e in sources]),
                 self.data_args)
@@ -732,10 +718,18 @@ class LazySupervisedDataset(Dataset):
         # image exist in the data
         if 'image' in self.list_data_dict[i]:
             data_dict['image'] = image
+            data_dict['image_size'] = image_size
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
-            crop_size = self.data_args.image_processor.crop_size
+            if isinstance(self.data_args.image_processor, transformers.CLIPImageProcessor):
+                crop_size = self.data_args.image_processor.crop_size
+            elif isinstance(self.data_args.image_processor, transformers.SiglipImageProcessor):
+                crop_size = self.data_args.image_processor.size
+            else:
+                raise NotImplementedError
+            
             data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
+            data_dict['image_size'] = (crop_size['width'], crop_size['height'])
         return data_dict
 
 
@@ -769,16 +763,21 @@ class DataCollatorForSupervisedDataset(object):
                 batch['images'] = torch.stack(images)
             else:
                 batch['images'] = images
+            image_sizes = [instance['image_size'] for instance in instances]
+            batch['image_sizes'] = image_sizes
 
         return batch
 
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
-                                data_args) -> Dict:
+                                data_args: DataArguments,
+                                model_args: ModelArguments) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
+    data_args.image_grid_pinpoints = model_args.image_grid_pinpoints
     train_dataset = LazySupervisedDataset(tokenizer=tokenizer,
                                 data_path=data_args.data_path,
-                                data_args=data_args)
+                                data_args=data_args
+                                )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
@@ -843,6 +842,9 @@ def train(attn_implementation=None):
 
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
+    
+    if 'unpad' in model_args.mm_patch_merge_type and not hasattr(model.model, "image_newline"):
+        model.model.initialize_image_newline() 
 
     if training_args.bits in [4, 8]:
         from peft import prepare_model_for_kbit_training
@@ -957,7 +959,8 @@ def train(attn_implementation=None):
                         module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              data_args=data_args)
+                                              data_args=data_args,
+                                              model_args=model_args)
     trainer = LLaVATrainer(model=model,
                     tokenizer=tokenizer,
                     args=training_args,
