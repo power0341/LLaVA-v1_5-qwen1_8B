@@ -100,6 +100,16 @@ class LlavaMetaModel:
 
             self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
 
+        if self.config.mm_vision_tower == "dual_tower":
+            self.config.dual_tower_clip_image_tower = getattr(model_args, "dual_tower_clip_image_tower", None)
+            self.config.dual_tower_clip_mm_vision_select_layer = getattr(model_args, "dual_tower_clip_mm_vision_select_layer", None)
+            self.config.dual_tower_clip_mm_vision_select_feature = getattr(model_args, "dual_tower_clip_mm_vision_select_feature", None)
+
+            self.config.dual_tower_depth_anything_image_tower = getattr(model_args, "dual_tower_depth_anything_image_tower", None)
+            self.config.dual_tower_depth_anything_mm_vision_select_layer = getattr(model_args, "dual_tower_depth_anything_mm_vision_select_layer", None)
+            self.config.dual_tower_depth_anything_mm_vision_select_feature = getattr(model_args, "dual_tower_depth_anything_mm_vision_select_feature", None)
+
+
     def initialize_image_newline(self):
         self.image_newline = nn.Parameter(
                     torch.empty(self.config.hidden_size, dtype=self.dtype)

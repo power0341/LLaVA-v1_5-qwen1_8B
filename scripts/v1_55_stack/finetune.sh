@@ -1,27 +1,25 @@
 #!/bin/bash
 
-# OMP_NUM_THREADS=1 NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 NCCL_DEBUG=INFO
-# [[336,672],[672,336],[672,672],[1008,336],[336,1008]]
-# [[384,768],[768,384],[768,768],[1152,384],[384,1152]]
-OMP_NUM_THREADS=1 deepspeed --include=localhost:0,1 --master_port 23003 llava/train/train_mem.py \
+OMP_NUM_THREADS=1 deepspeed --include=localhost:4,5,6,7 --master_port 23002 llava/train/train_mem.py \
     --deepspeed ./scripts/zero3.json \
-    --model_name_or_path /data1/xly/models/llava-v1.55/llava-mlp2x-336px-tinyllama-1.1b-finetune \
+    --model_name_or_path /data1/xly/models/TinyLlama-1.1B-Chat-v1.0 \
     --version llava_llama_2 \
     --data_path /hotdata/xly/llava-data/LLaVA-Instruct-150K/llava_v1_5_mix665k.json \
     --image_folder /hotdata/xly/llava-data/LLaVA-Instruct-150K/images \
-    --vision_tower /data1/xly/models/clip-vit-large-patch14-336 \
+    --pretrain_mm_mlp_adapter /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-pretrain/checkpoint-32/mm_projector.bin \
+    --vision_tower dual_tower \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \
-    --mm_vision_select_feature "patch" \
+    --dual_tower_clip_image_tower /data1/xly/models/clip-vit-large-patch14-336 \
+    --dual_tower_clip_mm_vision_select_layer -2 \
+    --dual_tower_depth_anything_image_tower /data1/xly/models/depth-anything-large \
+    --dual_tower_depth_anything_mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --mm_patch_merge_type spatial_unpad \
-    --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[[336,672],[672,336],[672,672],[1008,336],[336,1008]]" \
+    --image_aspect_ratio pad \
     --group_by_modality_length True \
-    --dataloader_drop_last True \
     --bf16 True \
-    --output_dir /data1/xly/models/llava-v1.55/llava-mlp2x-336px-tinyllama-1.1b-finetune-anyres2 \
+    --output_dir /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-finetune \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \

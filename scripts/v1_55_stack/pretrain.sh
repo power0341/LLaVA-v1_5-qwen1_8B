@@ -6,15 +6,18 @@ deepspeed --include=localhost:4,5,6,7 --master_port 23002 llava/train/train_mem.
     --version plain \
     --data_path /hotdata/xly/llava-data/LLaVA-Pretrain/blip_laion_cc_sbu_558k.json \
     --image_folder /hotdata/xly/llava-data/LLaVA-Pretrain/images \
-    --vision_tower /data1/xly/models/clip-vit-large-patch14-336 \
+    --vision_tower dual_tower \
     --mm_projector_type mlp2x_gelu \
     --tune_mm_mlp_adapter True \
     --mm_vision_select_layer -2 \
-    --mm_vision_select_feature "patch" \
+    --dual_tower_clip_image_tower /data1/xly/models/clip-vit-large-patch14-336 \
+    --dual_tower_clip_mm_vision_select_layer -2 \
+    --dual_tower_depth_anything_image_tower /data1/xly/models/depth-anything-large \
+    --dual_tower_depth_anything_mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --bf16 True \
-    --output_dir /data1/xly/models/llava-v1.55/llava-mlp2x-336px-tinyllama-1.1b-pretrain \
+    --output_dir /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-pretrain \
     --num_train_epochs 1 \
     --per_device_train_batch_size 32 \
     --per_device_eval_batch_size 4 \

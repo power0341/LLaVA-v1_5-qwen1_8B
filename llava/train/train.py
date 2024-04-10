@@ -65,6 +65,12 @@ class ModelArguments:
     mm_patch_merge_type: Optional[str] = field(default='flat')
     mm_vision_select_feature: Optional[str] = field(default="patch")
     image_grid_pinpoints: Optional[str] = field(default=None)
+    dual_tower_clip_image_tower: Optional[str] = field(default=None)
+    dual_tower_clip_mm_vision_select_layer: Optional[int] = field(default=-1)
+    dual_tower_clip_mm_vision_select_feature: Optional[str] = field(default="patch")
+    dual_tower_depth_anything_image_tower: Optional[str] = field(default=None)
+    dual_tower_depth_anything_mm_vision_select_layer: Optional[int] = field(default=-1)
+    dual_tower_depth_anything_mm_vision_select_feature: Optional[str] = field(default="patch")
 
 @dataclass
 class DataArguments:
@@ -965,6 +971,13 @@ def train(attn_implementation=None):
                     tokenizer=tokenizer,
                     args=training_args,
                     **data_module)
+    
+    # if local_rank == 0:
+    #     import pickle
+    #     pickle.dump(data_args, open(os.path.join(training_args.output_dir, 'data_args.pkl'), 'wb'))
+    #     pickle.dump(model_args, open(os.path.join(training_args.output_dir, 'model_args.pkl'), 'wb'))
+    #     pickle.dump(training_args, open(os.path.join(training_args.output_dir, 'training_args.pkl'), 'wb')) 
+    #     pickle.dump(data_module, open(os.path.join(training_args.output_dir, 'data_module.pkl'), 'wb'))
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
