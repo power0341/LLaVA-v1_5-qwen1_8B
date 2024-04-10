@@ -6,7 +6,7 @@ OMP_NUM_THREADS=1 deepspeed --include=localhost:4,5,6,7 --master_port 23002 llav
     --version llava_llama_2 \
     --data_path /hotdata/xly/llava-data/LLaVA-Instruct-150K/llava_v1_5_mix665k.json \
     --image_folder /hotdata/xly/llava-data/LLaVA-Instruct-150K/images \
-    --pretrain_mm_mlp_adapter /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-pretrain/checkpoint-32/mm_projector.bin \
+    --pretrain_mm_mlp_adapter /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-pretrain/mm_projector.bin \
     --vision_tower dual_tower \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \

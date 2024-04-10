@@ -5,7 +5,7 @@
 # [[384,768],[768,384],[768,768],[1152,384],[384,1152]]
 OMP_NUM_THREADS=1 deepspeed --include=localhost:4,5,6,7 --master_port 23002 llava/train/train_mem.py \
     --deepspeed ./scripts/zero3.json \
-    --model_name_or_path /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-finetune/checkpoint-64 \
+    --model_name_or_path /data1/xly/models/llava-v1.55/llava-mlp2x-336px518px-tinyllama-1.1b-finetune \
     --version llava_llama_2 \
     --data_path /hotdata/xly/llava-data/LLaVA-Instruct-150K/llava_v1_5_mix665k.json \
     --image_folder /hotdata/xly/llava-data/LLaVA-Instruct-150K/images \
