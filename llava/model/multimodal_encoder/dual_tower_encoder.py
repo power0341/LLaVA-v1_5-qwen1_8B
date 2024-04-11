@@ -41,12 +41,12 @@ class DualTowerEncoder(torch.nn.Module):
         if not delay_load:
             self.load_model()
         
-    def load_model(self):
+    def load_model(self, device_map=None):
         if self.is_loaded:
             print('{} is already loaded, `load_model` called again, skipping.'.format(self.vision_tower_name))
             return
         for tower in self.towers:
-            tower.load_model()
+            tower.load_model(device_map=device_map)
         self.image_processor = self.towers[0].image_processor
         self.is_loaded = True
 
